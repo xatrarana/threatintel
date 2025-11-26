@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard - ThreatIntel Processor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  
+  <style>
+    body {
+      font-family: 'Inter', system-ui;
+      background: linear-gradient(135deg, #0d102c, #1f224a, #3b1d64);
+      color: #f8f9fa;
+    }
+    .navbar {
+      background: #060930;
+    }
+    .card {
+      border: none;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(8px);
+      color: #f8f9fa;
+    }
+    .btn-primary {
+      background: #4f46e5;
+      border: none;
+    }
+    .btn-primary:hover {
+      background: #6366f1;
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px dashed rgba(255,255,255,0.25);
+      color: #e5e7eb;
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.06);
+    }
+    footer {
+      text-align: center;
+      color: #9ca3af;
+      margin-top: 30px;
+      font-size: 0.9rem;
+    }
+    .small-muted {
+      color: #9ca3af;
+      font-size: 0.9rem;
+    }
+    pre.raw {
+      background: #11172b;
+      padding: 8px;
+      border-radius: 8px;
+      color: #cbd5e1;
+    }
+    .detail-key {
+      color: #9ca3af;
+      width: 35%;
+    }
+    .detail-val {
+      color: #e6eef8;
+      width: 65%;
+    }
+    .card-compact {
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+    }
+    .badge-soft {
+      padding: 0.35rem 0.5rem;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .badge-green {
+      background: rgba(34,197,94,0.15);
+      color: #22c55e;
+      border: 1px solid rgba(34,197,94,0.25);
+    }
+    .badge-yellow {
+      background: rgba(234,179,8,0.15);
+      color: #eab308;
+      border: 1px solid rgba(234,179,8,0.25);
+    }
+    .badge-red {
+      background: rgba(239,68,68,0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+    .copy-btn {
+      margin-left: 8px;
+    }
+    #map {
+      height: 360px;
+      border-radius: 12px;
+    }
+    .alert {
+      border-radius: 8px;
+      border: none;
+    }
+    .alert-warning {
+      background: rgba(234,179,8,0.1);
+      color: #eab308;
+      border: 1px solid rgba(234,179,8,0.3);
+    }
+    .alert-success {
+      background: rgba(34,197,94,0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34,197,94,0.3);
+    }
+    .form-control {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e2e8f0;
+    }
+    .form-control:focus {
+      background: rgba(255,255,255,0.08);
+      border-color: #4f46e5;
+      color: #e2e8f0;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.2);
+    }
+    .form-control::placeholder {
+      color: rgba(226,232,240,0.4);
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+      <a class="navbar-brand text-light fw-bold" href="{{ url_for('dashboard.index') }}">
+        ⚡ ThreatIntel Dashboard
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-white me-2">{{ session.get('user') }}</span>
+        <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.setup') }}">⚙️ Settings</a>
+        <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.logout') }}">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container py-4">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category in ['warning', 'success', 'danger', 'info'] else 'info' }} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row g-3">
+      <!-- IP Lookup Card -->
+      <div class="col-md-6">
+        <div class="card p-3">
+          <h5>🔍 IP Lookup</h5>
+          <div class="input-group mb-2">
+            <input id="ipinput" class="form-control" placeholder="Enter IP e.g. 8.8.8.8"/>
+            <button class="btn btn-primary" onclick="doCheckIp()">Check</button>
+          </div>
+          <div id="ipResult">
+            <p class="small-muted">Results will appear here.</p>
+          </div>
+          <hr/>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-light" onclick="fetchBlacklist()">
+              Fetch Blacklist (AbuseIPDB)
+            </button>
+            <div class="dropdown">
+              <button class="btn btn-ghost dropdown-toggle" data-bs-toggle="dropdown">
+                Export (SIEM)
+              </button>
+              <ul class="dropdown-menu dropdown-menu-dark">
+                <li><a class="dropdown-item" href="{{ url_for('api.export_csv') }}">📄 Download CSV</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('api.export_json') }}">📋 Download JSON</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('api.export_stix') }}">🔒 Download STIX 2.1</a></li>
+              </ul>
+            </div>
+          </div>
+          <div id="fetchResult" class="mt-2 small-muted"></div>
+        </div>
+      </div>
+
+      <!-- Threat Overview Card -->
+      <div class="col-md-6">
+        <div class="card p-3">
+          <h5>📊 Threat Overview</h5>
+          <canvas id="threatChart"></canvas>
+          <hr/>
+          <h6>Database Info</h6>
+          <p>Total IOC Records: <strong id="totalRecords">{{ total_records }}</strong></p>
+          <p>Last Update: <strong id="lastUpdate">{{ current_time }}</strong></p>
+        </div>
+      </div>
+
+      <!-- Top Malicious IPs -->
+      <div class="col-12">
+        <div class="card p-3">
+          <h5>🎯 Top Malicious IPs (by abuse confidence)</h5>
+          <div id="topList">
+            <p class="small-muted">Loading...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- GeoMap -->
+      <div class="col-12">
+        <div class="card p-3">
+          <h5>🗺️ GeoMap (Top Malicious IPs)</h5>
+          <div id="map"></div>
+          <p class="small-muted mt-2">Source: ip-api.com (free)</p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <span>&copy; <span id="year"></span> ThreatIntel 
+    </footer>
+    
+    <script>
+      document.getElementById('year').innerText = new Date().getFullYear();
+    </script>
+    
+  </div>
+
+  <!-- Passive DNS Modal -->
+  <div class="modal fade" id="pdnsModal" tabindex="-1" aria-labelledby="pdnsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content" style="background:#0b1030;color:#e5e7eb;border:1px solid rgba(255,255,255,0.1)">
+        <div class="modal-header">
+          <h5 class="modal-title" id="pdnsLabel">Passive DNS Records</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="pdnsBody">Loading...</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Chart initialization
+    let lastCounts = { clean: 0, suspicious: 0, malicious: 0 };
+
+    const ctx = document.getElementById('threatChart');
+    const chart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Clean', 'Suspicious', 'Malicious'],
+        datasets: [{
+          label: 'Threat Status',
+          data: [1, 1, 1],
+          backgroundColor: [
+            'rgba(34,197,94,0.85)',
+            'rgba(234,179,8,0.85)',
+            'rgba(239,68,68,0.85)'
+          ],
+          borderColor: [
+            'rgba(34,197,94,1)',
+            'rgba(234,179,8,1)',
+            'rgba(239,68,68,1)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        cutout: '60%',
+        plugins: {
+          legend: { labels: { color: '#f8f9fa' } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const idx = ctx.dataIndex;
+                const names = ['Clean', 'Suspicious', 'Malicious'];
+                const vals = [lastCounts.clean, lastCounts.suspicious, lastCounts.malicious];
+                return `${names[idx]}: ${vals[idx]}`;
+              }
+            }
+          }
+        },
+        animation: { animateRotate: true, animateScale: true }
+      }
+    });
+
+    function updateThreatChart(clean, suspicious, malicious) {
+      lastCounts = { clean, suspicious, malicious };
+      const total = clean + suspicious + malicious;
+      
+      if (total === 0) {
+        chart.data.datasets[0].data = [1, 1, 1];
+        chart.update();
+        return;
+      }
+      
+      const minPct = 0.08;
+      let pClean = Math.max(clean / total, minPct);
+      let pSusp = Math.max(suspicious / total, minPct);
+      let pMal = Math.max(malicious / total, minPct);
+      
+      const sum = pClean + pSusp + pMal;
+      pClean /= sum;
+      pSusp /= sum;
+      pMal /= sum;
+      
+      chart.data.datasets[0].data = [pClean, pSusp, pMal];
+      chart.update();
+    }
+
+    // Leaflet Map
+    let map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 6 }).addTo(map);
+    let markersLayer = L.layerGroup().addTo(map);
+
+    // Helper functions
+    function kvRow(k, v, extraHtmlRight = '') {
+      if (v === null || v === undefined) v = '-';
+      if (Array.isArray(v)) v = v.length ? v.join(', ') : '-';
+      return `<div class="d-flex py-1 align-items-center">
+        <div class="detail-key">${k}</div>
+        <div class="detail-val"><strong>${String(v)}</strong>${extraHtmlRight}</div>
+      </div>`;
+    }
+
+    function scoreBadge(score) {
+      let s = Number(score);
+      if (isNaN(s)) return `<span class="badge-soft badge-yellow">-</span>`;
+      let cls = s >= 75 ? 'badge-red' : (s >= 30 ? 'badge-yellow' : 'badge-green');
+      return `<span class="badge-soft ${cls}">${s}</span>`;
+    }
+
+    function riskLabel(score) {
+      let s = Number(score);
+      if (isNaN(s)) return `<span class="badge-soft badge-yellow">Unknown</span>`;
+      if (s >= 90) return `<span class="badge-soft badge-red">Critical</span>`;
+      if (s >= 75) return `<span class="badge-soft badge-red">High</span>`;
+      if (s >= 30) return `<span class="badge-soft badge-yellow">Medium</span>`;
+      return `<span class="badge-soft badge-green">Low</span>`;
+    }
+
+    function countryFlag(cc) {
+      if (!cc) return '';
+      cc = cc.toUpperCase();
+      if (cc.length !== 2) return cc;
+      const A = 0x1F1E6;
+      const codePoints = [cc.charCodeAt(0) - 65 + A, cc.charCodeAt(1) - 65 + A];
+      try {
+        return String.fromCodePoint(...codePoints) + ' ' + cc;
+      } catch (e) {
+        return cc;
+      }
+    }
+
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+    }
+
+    let lastOtxPassiveDns = [];
+
+    async function doCheckIp() {
+      const ip = document.getElementById('ipinput').value.trim();
+      if (!ip) {
+        alert('Enter IP');
+        return;
+      }
+      
+      const resultEl = document.getElementById('ipResult');
+      resultEl.innerHTML = '<p class="small-muted">Checking...</p>';
+      
+      try {
+        const resp = await fetch('{{ url_for("api.check_ip") }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip })
+        });
+        const js = await resp.json();
+        
+        if (js.error) {
+          resultEl.innerHTML = '<div class="text-danger">' + js.error + '</div>';
+          return;
+        }
+
+        // AbuseIPDB card
+        let abuse = js.abuse || {};
+        let abuseCard = '';
+        
+        if (abuse.error) {
+          abuseCard = `<div class="card-compact"><h6>AbuseIPDB</h6><div class="text-danger">${abuse.error}</div></div>`;
+        } else {
+          const d = abuse.details || {};
+          const ipCopy = `<button class="btn btn-sm btn-ghost copy-btn" onclick="copyToClipboard('${d.ipAddress || abuse.ip || ''}')">Copy</button>`;
+          const scoreHtml = scoreBadge(d.abuseConfidenceScore ?? abuse.score ?? '-');
+          const riskHtml = riskLabel(d.abuseConfidenceScore ?? abuse.score ?? '-');
+          const cc = d.countryCode || abuse.country || '';
+          const flag = countryFlag(cc) || cc || '-';
+          
+          abuseCard = `<div class="card-compact mb-2">
+            <h6>AbuseIPDB</h6>
+            ${kvRow('IP', d.ipAddress || abuse.ip || '-', ipCopy)}
+            ${kvRow('Abuse Score', scoreHtml)}
+            ${kvRow('Risk', riskHtml)}
+            ${kvRow('Country', flag)}
+            ${kvRow('ISP', d.isp || '-')}
+            ${kvRow('Usage Type', d.usageType || '-')}
+            ${kvRow('Domain / Reverse DNS', d.domain || '-')}
+            ${kvRow('Hostnames', (d.hostnames && d.hostnames.length) ? d.hostnames : '-')}
+            ${kvRow('Total Reports', d.totalReports ?? 0)}
+            ${kvRow('Distinct Reporters', d.numDistinctUsers ?? 0)}
+            ${kvRow('Last Reported At', d.lastReportedAt || '-')}
+          </div>`;
+        }
+
+        // OTX card
+        let otx = js.otx || {};
+        let otxCard = '';
+        lastOtxPassiveDns = [];
+        
+        if (otx.error) {
+          otxCard = `<div class="card-compact"><h6>OTX</h6><div class="text-danger">${otx.error}</div></div>`;
+        } else {
+          const od = otx.data || {};
+          const whoisText = (typeof od.whois === 'string') ? od.whois : '';
+          const whoisCopyBtn = whoisText ? `<button class="btn btn-sm btn-ghost copy-btn" onclick="copyToClipboard(\`${whoisText.replace(/`/g, '\\`')}\`)">Copy</button>` : '';
+          lastOtxPassiveDns = Array.isArray(od.passive_dns) ? od.passive_dns : [];
+          const pdnsPreview = lastOtxPassiveDns.slice(0, 5).map(x => x.host || x.hostname || JSON.stringify(x)).join(', ') || '-';
+          const viewAllBtn = lastOtxPassiveDns.length > 5 ? `<button class="btn btn-sm btn-primary copy-btn" onclick="openPdnsModal()">View all (${lastOtxPassiveDns.length})</button>` : '';
+          const flag2 = od.country_name || '-';
+          
+          otxCard = `<div class="card-compact mb-2">
+            <h6>OTX (${otx.source || 'OTX'})</h6>
+            ${kvRow('Indicator', od.indicator || '-')}
+            ${kvRow('Reputation', od.reputation ?? '-')}
+            ${kvRow('Country', flag2)}
+            ${kvRow('Pulse Count', od.pulse_count ?? '-')}
+            ${kvRow('Whois', whoisText ? 'Available' : '-', whoisCopyBtn)}
+            ${kvRow('Passive DNS', pdnsPreview, viewAllBtn)}
+          </div>`;
+        }
+
+        const rawHtml = `<details style="margin-top:6px;color:#9ca3af;"><summary>Show raw JSON</summary><pre class="raw">${JSON.stringify(js, null, 2)}</pre></details>`;
+        resultEl.innerHTML = `<div>${abuseCard}${otxCard}${rawHtml}</div>`;
+
+        refreshTopList();
+        refreshTotals();
+      } catch (e) {
+        resultEl.innerHTML = '<div class="text-danger">Error: ' + e.message + '</div>';
+      }
+    }
+
+    function openPdnsModal() {
+      const body = document.getElementById('pdnsBody');
+      if (!lastOtxPassiveDns || lastOtxPassiveDns.length === 0) {
+        body.innerHTML = '<p class="small-muted">No Passive DNS records.</p>';
+      } else {
+        let html = '<div class="table-responsive"><table class="table table-dark table-sm"><thead><tr><th>#</th><th>Host</th><th>IP</th><th>Last Seen</th></tr></thead><tbody>';
+        lastOtxPassiveDns.forEach((r, i) => {
+          const host = r.host || r.hostname || '-';
+          const ip = r.ip || r.address || '-';
+          const ts = r.last || r.last_seen || r.first || '-';
+          html += `<tr><td>${i + 1}</td><td>${host}</td><td>${ip}</td><td>${ts}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+        body.innerHTML = html;
+      }
+      const modal = new bootstrap.Modal(document.getElementById('pdnsModal'));
+      modal.show();
+    }
+
+    async function fetchBlacklist() {
+      if (!confirm('Fetch latest blacklist from AbuseIPDB and update DB?')) return;
+      document.getElementById('fetchResult').innerText = 'Fetching...';
+      
+      try {
+        const resp = await fetch('{{ url_for("api.fetch_blacklist") }}', { method: 'POST' });
+        const js = await resp.json();
+        
+        if (js.error) {
+          document.getElementById('fetchResult').innerText = 'Error: ' + js.error;
+        } else {
+          document.getElementById('fetchResult').innerText = 'Added/Updated: ' + js.added + ' records';
+        }
+        
+        await refreshTopList();
+        await refreshTotals();
+      } catch (e) {
+        document.getElementById('fetchResult').innerText = 'Error: ' + e.message;
+      }
+    }
+
+    function toLocal(rfcTimestamp) {
+      if (!rfcTimestamp) return '-';
+      const d = new Date(rfcTimestamp);
+      return d.toLocaleString();
+    }
+
+
+    async function refreshTopList() {
+      const el = document.getElementById('topList');
+      el.innerHTML = '<p class="small-muted">Loading...</p>';
+      
+      try {
+        const resp = await fetch('{{ url_for('api.top_malicious') }}');
+        
+        const js = await resp.json();
+        console.log(js)
+        
+        if (js.error) {
+          el.innerHTML = '<div class="text-danger">' + js.error + '</div>';
+          updateThreatChart(0, 0, 0);
+          return;
+        }
+        
+        if (js.items.length === 0) {
+          el.innerHTML = '<p class="small-muted">No records</p>';
+          markersLayer.clearLayers();
+          updateThreatChart(0, 0, 0);
+          return;
+        }
+
+        let html = '<div class="table-responsive"><table class="table table-dark table-sm"><thead><tr><th>IP</th><th>Score</th><th>Risk</th><th>Country</th><th>Last Seen</th></tr></thead><tbody>';
+        markersLayer.clearLayers();
+
+        let malicious = 0, suspicious = 0, clean = 0;
+
+        for (const r of js.items) {
+          const cc = r.country_code || '';
+          const flag = countryFlag(cc) || cc || '-';
+          const sBadge = scoreBadge(r.abuse_confidence ?? '-');
+          const rBadge = riskLabel(r.abuse_confidence ?? '-');
+          const local = toLocal(r.last_seen);
+          html += `<tr><td>${r.ip_address}</td><td>${sBadge}</td><td>${rBadge}</td><td>${flag}</td><td>${local || '-'}</td></tr>`;
+
+          const s = Number(r.score || 0);
+          if (s >= 75) malicious++;
+          else if (s >= 30) suspicious++;
+          else clean++;
+
+          try {
+            const g = await (await fetch(`{{ url_for('api.geo') }}?ip=${encodeURIComponent(r.ip_address)}`)).json();
+            if (g && g.lat && g.lon) {
+              const popup = `<strong>${r.ip}</strong><br/>Score: ${s || '-'}<br/>${g.city || ''} ${g.country || ''}<br/>ISP: ${g.isp || '-'}`;
+              L.marker([g.lat, g.lon]).bindPopup(popup).addTo(markersLayer);
+            }
+          } catch (e) {}
+        }
+        
+        el.innerHTML = html + '</tbody></table></div>';
+        updateThreatChart(clean, suspicious, malicious);
+      } catch (e) {
+        el.innerHTML = '<div class="text-danger">Error: ' + e.message + '</div>';
+        updateThreatChart(0, 0, 0);
+      }
+    }
+
+    async function refreshTotals() {
+      try {
+        const resp = await fetch('{{ url_for('api.totals') }}');
+        const js = await resp.json();
+        document.getElementById('totalRecords').innerText = js.total_records;
+        const lu = document.getElementById('lastUpdate');
+        if (lu) lu.innerText = js.current_time;
+      } catch (e) {}
+    }
+
+    // Initial load
+    refreshTopList();
+    refreshTotals();
+  </script>
+</body>
+</html>

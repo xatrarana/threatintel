@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>API Setup - ThreatIntel Processor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f172a, #0b1220);
+      color: #e2e8f0;
+      font-family: Inter, system-ui;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+    }
+    .setup-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 40px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .form-label {
+      color: #cbd5e1;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .form-control {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .form-control:focus {
+      background: rgba(255,255,255,0.08);
+      border-color: #4f46e5;
+      color: #e2e8f0;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.2);
+    }
+    .form-control::placeholder {
+      color: rgba(226,232,240,0.4);
+    }
+    .btn-primary {
+      background: #4f46e5;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .btn-primary:hover {
+      background: #6366f1;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(79,70,229,0.4);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 12px 24px;
+      border-radius: 8px;
+      color: #e2e8f0;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+    .alert {
+      border-radius: 8px;
+      border: none;
+    }
+    .alert-success {
+      background: rgba(34,197,94,0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34,197,94,0.3);
+    }
+    .alert-danger {
+      background: rgba(239,68,68,0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+    .info-box {
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .info-box h6 {
+      color: #60a5fa;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .info-box ul {
+      margin: 0;
+      padding-left: 20px;
+      color: #cbd5e1;
+    }
+    .info-box a {
+      color: #60a5fa;
+      text-decoration: none;
+    }
+    .info-box a:hover {
+      color: #93c5fd;
+      text-decoration: underline;
+    }
+    .header-logo {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    footer {
+      text-align: center;
+      color: #9ca3af;
+      margin-top: 24px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        <div class="setup-card">
+          <div class="header-logo">⚡ ThreatIntel</div>
+          <h3 class="mb-3">API Configuration Setup</h3>
+          <p class="text-muted mb-4">Configure your API keys to start using ThreatIntel Processor Pro</p>
+          
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+                  {{ message }}
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <div class="info-box">
+            <h6>📌 Where to get your API keys:</h6>
+            <ul>
+              <li><strong>OTX API Key:</strong> <a href="https://otx.alienvault.com/" target="_blank">AlienVault OTX</a> - Free account required</li>
+              <li><strong>AbuseIPDB API Key:</strong> <a href="https://www.abuseipdb.com/api" target="_blank">AbuseIPDB</a> - Free tier available</li>
+            </ul>
+          </div>
+
+          <form method="post" action="{{ url_for('auth.setup') }}">
+            <div class="mb-4">
+              <label class="form-label">OTX API Key</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                name="otx_api_key" 
+                placeholder="Enter your OTX API key"
+                value="{{ keys.otx_api_key if keys else '' }}"
+                required
+              />
+              <small class="text-muted d-block mt-1">AlienVault Open Threat Exchange API key</small>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label">AbuseIPDB API Key</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                name="abuseipdb_api_key" 
+                placeholder="Enter your AbuseIPDB API key"
+                value="{{ keys.abuseipdb_api_key if keys else '' }}"
+                required
+              />
+              <small class="text-muted d-block mt-1">AbuseIPDB API key for IP reputation checks</small>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary flex-grow-1">Save & Continue</button>
+              <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+          </form>
+
+          <footer>
+            Developed & Designed by <strong style="color:#4f46e5">Dip Kar</strong>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
