@@ -124,6 +124,12 @@
     .form-control::placeholder {
       color: rgba(226,232,240,0.4);
     }
+    .mt-2{
+      margin-top: .5rem;
+    } 
+    .mb-2{
+      margin-bottom: .5rem;
+    }
   </style>
 </head>
 <body>
@@ -136,7 +142,9 @@
       <div class="d-flex align-items-center gap-2">
         <span class="text-white me-2">{{ session.get('user') }}</span>
         <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.setup') }}">⚙️ Settings</a>
-        <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.logout') }}">Logout</a>
+        <form id="logoutForm" action="{{ url_for('auth.logout') }}" method="GET">
+          <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
+        </form>
       </div>
     </div>
   </nav>
@@ -168,21 +176,6 @@
             <p class="small-muted">Results will appear here.</p>
           </div>
           <hr/>
-          <div class="d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-light" onclick="fetchBlacklist()">
-              Fetch Blacklist (AbuseIPDB)
-            </button>
-            <div class="dropdown">
-              <button class="btn btn-ghost dropdown-toggle" data-bs-toggle="dropdown">
-                Export (SIEM)
-              </button>
-              <ul class="dropdown-menu dropdown-menu-dark">
-                <li><a class="dropdown-item" href="{{ url_for('api.export_csv') }}">📄 Download CSV</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('api.export_json') }}">📋 Download JSON</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('api.export_stix') }}">🔒 Download STIX 2.1</a></li>
-              </ul>
-            </div>
-          </div>
           <div id="fetchResult" class="mt-2 small-muted"></div>
         </div>
       </div>
@@ -203,6 +196,21 @@
       <div class="col-12">
         <div class="card p-3">
           <h5>🎯 Top Malicious IPs (by abuse confidence)</h5>
+          <div class="d-flex flex-wrap gap-2 mt-2 mb-2" style="margin-bottom: 3rem !important;">
+            <button class="btn btn-outline-light" onclick="fetchBlacklist()">
+              Fetch Blacklist (AbuseIPDB)
+            </button>
+            <div class="dropdown" style="position: relative;">
+              <button class="btn btn-ghost dropdown-toggle" data-bs-toggle="dropdown">
+                Export (SIEM)
+              </button>
+              <ul class="dropdown-menu dropdown-menu-dark">
+                <li><a class="dropdown-item" href="{{ url_for('api.export_csv') }}">📄 Download CSV</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('api.export_json') }}">📋 Download JSON</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('api.export_stix') }}">🔒 Download STIX 2.1</a></li>
+              </ul>
+            </div>
+          </div>
           <div id="topList">
             <p class="small-muted">Loading...</p>
           </div>

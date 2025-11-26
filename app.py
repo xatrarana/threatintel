@@ -44,11 +44,10 @@ if __name__ == '__main__':
     app = create_app()
     print(f"""
     ╔═══════════════════════════════════════════════════════════════╗
-    ║          ThreatIntel Processor Pro - Starting...             ║
-    ║                                                               ║
-    ║  Developed & Designed by: Dip Kar                            ║
-    ║  Server: http://{Config.HOST}:{Config.PORT}                           ║
-    ║  Environment: {Config.ENV}                                        ║
+    ║          ThreatIntel Processor Pro - Starting...              ║   ║                                                               ║
+    ║  Developed & Designed by: Infotech Teams                      ║
+    ║  Server: http://{Config.HOST}:{Config.PORT}                   ║
+    ║  Environment: {Config.ENV}                                    ║
     ╚═══════════════════════════════════════════════════════════════╝
     """)
     
