@@ -184,8 +184,13 @@
           </form>
 
           <footer>
-            Developed & Designed by <strong style="color:#4f46e5">Dip Kar</strong>
+            <span>&copy; <span id="year"></span> ThreatIntel
           </footer>
+          
+          <script>
+            document.getElementById('year').innerText = new Date().getFullYear();
+          </script>
+          
         </div>
       </div>
     </div>
