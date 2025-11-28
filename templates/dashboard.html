@@ -528,7 +528,6 @@
         const resp = await fetch('{{ url_for('api.top_malicious') }}');
         
         const js = await resp.json();
-        console.log(js)
         
         if (js.error) {
           el.innerHTML = '<div class="text-danger">' + js.error + '</div>';
@@ -550,11 +549,12 @@
 
         for (const r of js.items) {
           const cc = r.country_code || '';
+          const url = `https://flagcdn.com/24x18/${cc.toLowerCase()}.png`;
           const flag = countryFlag(cc) || cc || '-';
           const sBadge = scoreBadge(r.abuse_confidence ?? '-');
           const rBadge = riskLabel(r.abuse_confidence ?? '-');
           const local = toLocal(r.last_seen);
-          html += `<tr><td>${r.ip_address}</td><td>${sBadge}</td><td>${rBadge}</td><td>${flag}</td><td>${local || '-'}</td></tr>`;
+          html += `<tr><td>${r.ip_address}</td><td>${sBadge}</td><td>${rBadge}</td><td><img src=${url} alt="${flag} flag" /> ${cc}</td><td>${local || '-'}</td></tr>`;
 
           const s = Number(r.score || 0);
           if (s >= 75) malicious++;
